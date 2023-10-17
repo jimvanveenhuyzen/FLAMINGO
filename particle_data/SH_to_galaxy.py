@@ -43,6 +43,8 @@ def read_subhalo(halo,group,particles):
 #read_subhalo(0,"/L1000N1800/HYDRO_FIDUCIAL/VR/catalogue_0077/vr_catalogue_0077.catalog_groups.0",\
 #             "/L1000N1800/HYDRO_FIDUCIAL/VR/catalogue_0077/vr_catalogue_0077.catalog_particles.0")
 
+galaxy_counter = 0
+
 def centre_of_mass(pos,mass):
     """
     Calculates the centre of mass position using input positions and masses
@@ -53,10 +55,7 @@ def centre_of_mass_vel(vel,mass):
     """
     Calculates the centre of mass velocity using input velocities and masses
     """
-    if np.sum(mass) == 0:
-        return 0 
-    else: 
-        return np.matmul(mass,vel)/np.sum(mass)
+    return np.matmul(mass,vel)/np.sum(mass)
 
 def halo_filter(pos,vel,mass,radius,figure_name,show_com):
     """
@@ -74,8 +73,9 @@ def halo_filter(pos,vel,mass,radius,figure_name,show_com):
         pos_masked: particle positions within the radius
         vel_masked: particle velocities within the radius
     """
-
+    
     CoM = centre_of_mass(pos,mass) #calculate the centre of mass 
+    particle_mass = 1.07e9 #solar mass
     distances = np.linalg.norm(pos - CoM, axis=1)
 
     print('Using a radius of {} kpc to mask the positions and velocities...'.format(1000*radius))
@@ -87,12 +87,24 @@ def halo_filter(pos,vel,mass,radius,figure_name,show_com):
     if len(pos_masked[:,0]) == 0:
         print('There are no particles within {} kpc!'.format(1000*radius))
         return None,None,None,None,None,None
+    
+    #calculate the mass of the galaxy
 
+    particle_mass = 1.07e9 #solar mass
+    galaxy_mass = particle_mass * np.sum(mass_masked)
+    cutoff_mass = 2.8e10
+    print('The total mass of the galaxy is {:.2e} M_sun.'.format(galaxy_mass))
+
+    if galaxy_mass < cutoff_mass:
+        print('The mass of the galaxy is below the cut-off point of {:.1e} M_sun.'.format(28000000000))
+        return None,None,None,None,None,None
+    
     ratio = len(pos_masked[:,0])/len(pos[:,0])
     print('{:.2f}% of the initial particle sample is used!'.format(100*ratio))
 
     CoM_vel = centre_of_mass_vel(vel_masked,mass_masked)
 
+    """
     fig = plt.figure(figsize=(12, 12))
     ax = fig.add_subplot(projection='3d')
     ax.scatter(pos_masked[:,0], pos_masked[:,1], pos_masked[:,2],s=5,zorder=1) 
@@ -106,27 +118,41 @@ def halo_filter(pos,vel,mass,radius,figure_name,show_com):
     ax.set_zlabel('z-position [Mpc]')
     fig.savefig(figure_name)
     plt.close()
-
+    """
+    
     vel_dispersion = np.std(vel_masked) #take the standard deviation of the masked velocities to find the velocity dispersion 
 
-    return pos_masked,vel_masked,mass_masked,CoM,CoM_vel,vel_dispersion
+    return pos_masked,vel_masked,galaxy_mass,CoM,CoM_vel,vel_dispersion
 
 pos_mask_total = []
-for i in range(10):
+vel_mask_total = []
+veldisp_mask_total = []
+galaxy_masses = []
+for i in range(1000):
     print("-"*60)
     print('Halo number {}...'.format(i))
     pos,vel,mass = read_subhalo(i,"/L1000N1800/HYDRO_FIDUCIAL/VR/catalogue_0077/vr_catalogue_0077.catalog_groups.0",\
             "/L1000N1800/HYDRO_FIDUCIAL/VR/catalogue_0077/vr_catalogue_0077.catalog_particles.0")
-    pos_mask,vel_mask,mass_mask,com,com_vel,vel_disp = halo_filter(pos,vel,mass,0.05,'halo{}_50kpc.png'.format(i),False)
+    pos_mask,vel_mask,gal_mass,com,com_vel,vel_disp = halo_filter(pos,vel,mass,0.05,'halo_images/halo{}_50kpc.png'.format(i),False)
 
     #add all the masked postions to the main position halo 
     if pos_mask is not None:
+        galaxy_counter += 1
         for j in range(len(pos_mask)):
-            pos_mask_total.append(pos_mask[i,:].tolist())
+            pos_mask_total.append(pos_mask[j,:].tolist())
+            vel_mask_total.append(vel_mask[j,:].tolist())
+        veldisp_mask_total.append(vel_disp)
+        galaxy_masses.append(gal_mass)
 
 pos_mask_total = np.array(pos_mask_total)
-print(pos_mask_total.shape)
-np.savetxt('haloPos_0_10.txt',pos_mask_total)
+print("There are {} galaxies that matched the criteria!".format(galaxy_counter))
+
+np.savetxt('haloPos_0_1000.txt',pos_mask_total)
+np.savetxt('haloVel_0_1000.txt',vel_mask_total)
+np.savetxt('haloVeldisp_0_1000.txt',veldisp_mask_total)
+np.savetxt('haloMass_0_1000.txt',galaxy_masses)
+
+np.savetxt('galaxy_number.txt',np.array([galaxy_counter,1000]))
 
 
     
