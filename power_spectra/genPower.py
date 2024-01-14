@@ -8,11 +8,16 @@ import sys
 
 #The simulations (generally) use a D3A cosmology, so define the Hubble constant using this value
 h = 0.681 #D3A cosmology 
-H0 = h*100 #km/s/Mpc
+hubble0 = h*100 #km/s/Mpc
+
+def Hubble(a,h,omega_m,omega_lambda):
+    Hubble_0 = h*100
+    Hubble_a = Hubble_0*np.sqrt(omega_m * a**(-3) + omega_lambda)
+    return Hubble_a
 
 def add_RSD(catalogue,z,line_of_sight):
     scale_factor = 1/(1+z)
-    rsd_pos = catalogue['Position'] + (catalogue['Velocity'] * line_of_sight)/(scale_factor*H0)
+    rsd_pos = catalogue['Position'] + (catalogue['Velocity'] * line_of_sight)/(scale_factor*hubble0)
     return rsd_pos
 
 def genPower_1D(position,mass,Nmesh,dk,kmin,show_data):
@@ -136,7 +141,7 @@ def compute_FFT(catalogue,Nmesh,dk,kmin,Nmu,z,line_of_sight):
     mu_data = mu_data[int(Nmu/2):]
     return k_data,mu_data,Pk_data,SN_data
 
-def genPower_2D(position,mass,velocity,Nmesh,dk,kmin,Nmu,line_of_sight=[0,0,1]):
+def genPower_2D(position,mass,velocity,Nmesh,dk,kmin,Nmu,line_of_sight=None):
     """
     This function generates a 2-dimensional power spectrum from an input vector containing
     particle positions, masses and velocities 
@@ -249,13 +254,22 @@ with h5py.File(SOAP_file,'r') as soap:
 soap.close()
 galaxy_stellarMass = np.load('/net/draco/data2/vanveenhuyzen/rsd_project/particle_data/galaxy_stellarMass.npy')
 galaxy_stellarVel = np.load('/net/draco/data2/vanveenhuyzen/rsd_project/particle_data/galaxy_meanVel.npy')
+galaxy_filterVel = np.load('/net/draco/data2/vanveenhuyzen/rsd_project/particle_data/galaxy_filterVel.npy')
 galaxy_filterMass = np.load('/net/draco/data2/vanveenhuyzen/rsd_project/particle_data/galaxy_filterMass.npy')
 galaxy_filterPos = np.load('/net/draco/data2/vanveenhuyzen/rsd_project/particle_data/galaxy_filterPos.npy')
 
-k_array,mu_array,Pk_array,SN_array = genPower_2D(CentreOfPot[:-1],galaxy_stellarMass,galaxy_stellarVel,Nmesh=512,dk=0.001,kmin=0.0001,Nmu=201)
+#print(galaxy_stellarVel[0:100])
+#print(galaxy_stellarVel[0:100]/H0)
+#print(galaxy_filterPos[0:100])
+
+#The top line is using the unfiltered catalogue 
+#k_array,mu_array,Pk_array,SN_array = genPower_2D(CentreOfPot[:-1],galaxy_stellarMass,galaxy_stellarVel,Nmesh=512,dk=0.001,kmin=0.0001,Nmu=201)
+k_array,mu_array,Pk_array,SN_array = genPower_2D(galaxy_filterPos,galaxy_filterMass,galaxy_filterVel,Nmesh=512,dk=0.001,kmin=0.0001,Nmu=201)
 Pk_noSN = Pk_array-SN_array
-k_1D, Pk_1D, SN_1D = genPower_1D(CentreOfPot[:-1],galaxy_stellarMass,512,0.001,0.0001,False)
-Pk_noSN_1D = Pk_1D - SN_1D
+#k_1D, Pk_1D, SN_1D = genPower_1D(CentreOfPot[:-1],galaxy_stellarMass,512,0.001,0.0001,False)
+k_1D, Pk_1D, SN_1D = genPower_1D(galaxy_filterPos,galaxy_filterMass,512,0.001,0.0001,False)
+print(SN_1D)
+Pk_noSN_1D = Pk_1D-SN_1D
 print(np.shape(k_array))
 print(np.shape(k_1D))
 
