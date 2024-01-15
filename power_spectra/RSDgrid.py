@@ -9,9 +9,9 @@ from scipy.interpolate import griddata
 #mu_val = np.load('mu_val_avg.npy')
 #print(Pk_val[0])
 
-k_val = np.load('kVAL_51.npy')
-Pk_val = np.load('pkVAL_51.npy')
-mu_val = np.load('muVAL_51.npy')
+k_val = np.load('kVAL_101.npy')
+Pk_val = np.load('pkVAL_101.npy')
+mu_val = np.load('muVAL_101.npy')
 
 def convert_to_kxky1(k,mu):
     #We use k = sqrt(kx^2 + ky^2) and mu = cos(theta)
@@ -30,6 +30,9 @@ def filter_coordinates(xy,z):
     #Simple function to remove all the NaN P(k) values from the sample
     xy_filter = xy[~np.isnan(xy).any(axis=1)]
     z_filter = z[~np.isnan(z)]
+
+    xy_filter = xy_filter[z_filter > 0.]
+    z_filter = z_filter[z_filter > 0.]
     return xy_filter,z_filter
 
 def obtain_coordinates(k,Pk,mu,filter=True):
@@ -40,30 +43,21 @@ def obtain_coordinates(k,Pk,mu,filter=True):
         mu_current = mu[i]
         index = len(mu)-1
         x,y = convert_to_kxky(k[index-i],mu_current)
-        print('print k_y as example\n',y)
+        #print('print k_y as example\n',y)
         xy = np.column_stack((x,y))
         xy_coordinates = np.concatenate((xy_coordinates,xy))
         z_coordinates = np.concatenate((z_coordinates,Pk[index-i]))
 
     #Remove the NaN values by default...
     if filter == True:
-        return filter_coordinates(xy_coordinates[1:],z_coordinates[1:])
+        xy_coordinates,z_coordinates = filter_coordinates(xy_coordinates[1:],z_coordinates[1:])
+        return xy_coordinates,z_coordinates
     else:
         return xy_coordinates[1:],z_coordinates[1:]
 
-test1,test2 = obtain_coordinates(k_val,Pk_val,mu_val)
-
-test1_nonan= test1[~np.isnan(test1).any(axis=1)]
-test2_nonan= test2[~np.isnan(test2)]
-test1_nonan = test1_nonan[test2_nonan > 1.]
-test2_nonan = test2_nonan[test2_nonan > 1.]
-print(test1)
-print(test2)
-print(test1.shape)
-print(test2.shape)
+test1_nonan,test2_nonan = obtain_coordinates(k_val,Pk_val,mu_val)
 print(test1_nonan.shape)
 print(test2_nonan.shape)
-
 print(np.max(test1_nonan))
 
 def create_grid():
@@ -88,9 +82,9 @@ def create_grid():
 
     coordinates = test1_nonan
     z_values = test2_nonan
-    print('shape of coordinates',coordinates.shape)
-    print('shape of the Pk values',z_values.shape)
-    #coordinates,z_values = obtain_coordinates(k_val,Pk_val,mu_val)
+    #print('shape of coordinates',coordinates.shape)
+    #print('shape of the Pk values',z_values.shape)
+    coordinates,z_values = obtain_coordinates(k_val,Pk_val,mu_val)
     grid_z = griddata(coordinates,z_values,(xv, yv), method='nearest')
     print(grid_z.shape)
 
@@ -171,11 +165,12 @@ fig.colorbar(cax,label='P(k) value')
 ax.set_xlabel(r'$k_x$')
 ax.set_ylabel(r'$k_y$')
 ax.grid(visible=True)
-fig.savefig('rsd_18122023_divided.png')
+fig.savefig('rsd_15012024_divided.png')
 plt.close()
 
 print(grid_z_2D.shape)
 
+print(grid_z)
 print(grid_z_2D/grid_z)
 
 from scipy.spatial.distance import cdist
@@ -241,7 +236,7 @@ fig.colorbar(cax,label='P(k) value')
 ax.set_xlabel(r'$k_x$')
 ax.set_ylabel(r'$k_y$')
 ax.grid(visible=True)
-plt.savefig('noInterp2D_18122023.png')
+plt.savefig('noInterp2D_15012024.png')
 plt.close()
 
 fig, ax = plt.subplots(figsize=(8, 6))
@@ -250,7 +245,7 @@ fig.colorbar(cax,label='P(k) value')
 ax.set_xlabel(r'$k_x$')
 ax.set_ylabel(r'$k_y$')
 ax.grid(visible=True)
-plt.savefig('rsd_divided_18122023.png')
+plt.savefig('rsd_divided_15012024.png')
 plt.close()
 
 #indices_x = np.round(available_x * (num_val-1)).astype(int)
@@ -260,3 +255,68 @@ plt.close()
 #fill_z[indices_y, indices_x] = available_z
 #print(fill_z)
 #print(np.shape(fill_z))
+
+print('Trying no interp...')
+def fill_grid(k,mu,Pk):
+
+    #First, lets create a grid of 100 by 100 points within the range k_x,k_y = 0-1
+    x = np.linspace(0,0.99,100)
+    x_gridpoints,y_gridpoints = np.meshgrid(x,x)
+
+    #Try getting a grid of 1D values to divide by... (TESTING)
+    grid_z_test = griddata(xy_coords1D_reshape,pkVAL_1Dnonan_repeat,(x_gridpoints,y_gridpoints), method='linear')
+    grid_z_test[np.isnan(grid_z_test)] = 1
+    print('The values for the 1D PS are:')
+    print(np.shape(grid_z_test))
+    print(grid_z_test)
+
+    #Create an empty dictionary to fill with various keys that correspond to the grid points
+    Pk_values = {}
+    for i in range(len(x_gridpoints[0])):
+        for j in range(len(x_gridpoints[0])):
+            x_coord = np.round(x_gridpoints[i,j],2)
+            y_coord = np.round(y_gridpoints[i,j],2)
+            Pk_values[(x_coord,y_coord)] = []
+    
+    #print(Pk_values.keys())
+    xy_data,z_data = obtain_coordinates(k_val,Pk_val,mu_val)
+    #Filter out the values k_x,k_y > 1, since we do not need them for this grid anyway
+    xy_data_filter = xy_data[(xy_data[:,0] < 1.)|(xy_data[:,1] < 1.)]
+    z_data_filter = z_data[(xy_data[:,0] < 1.)|(xy_data[:,1] < 1.)]
+
+    k_tuple = []
+    for k in range(len(xy_data_filter[:,0])):
+        k_coordinates = np.round(xy_data_filter[k,:],2)
+        k_tuple.append((k_coordinates[0],k_coordinates[1]))
+
+    count = 0
+    for tuple_ in k_tuple:
+        count += 1 
+        #print(tuple_)
+        if tuple_ in Pk_values.keys():
+            Pk_values[tuple_].append(z_data_filter[count])
+            
+    for key,values in Pk_values.items():
+        if len(values) > 0:
+            Pk_values[key] = np.mean(values)
+        else:
+            Pk_values[key] = 1e-5
+
+    grid_values = np.array(list(Pk_values.values()))
+    grid_values = grid_values.reshape(100,100)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cax = ax.imshow(grid_values,extent=(0, 1, 0, 1), origin='lower', cmap='nipy_spectral',norm=matplotlib.colors.LogNorm())
+    fig.colorbar(cax,label='P(k) value')
+    ax.set_xlabel(r'$k_x$')
+    ax.set_ylabel(r'$k_y$')
+    ax.grid(visible=True)
+    plt.savefig('noInterp2D_15012024.png')
+    plt.close()
+
+    print(np.shape(xy_data_filter))
+    print(np.shape(z_data_filter))
+    
+    return 1 
+
+fill_grid(1,1,1)
