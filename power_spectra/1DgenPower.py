@@ -6,6 +6,60 @@ from nbodykit import setup_logging, style
 import h5py
 import sys
 
+def plot_positions(positions,rsd_positions):
+
+    #Create a filter so that we dont have to plot all halos (very expensive)
+    condition_z = (positions[:, 2] > 100) & (positions[:, 2] < 110)
+    condition_y = (positions[:, 1] > 100) & (positions[:, 1] < 110)
+    condition_x = positions[:, 0] < 150
+
+    pos = positions[condition_x & condition_y & condition_z]
+    rsdpos = rsd_positions[condition_x & condition_y & condition_z]
+
+    plt.scatter(pos[:,1],pos[:,2],s=10,color='black',label='Positions',zorder=20)
+    plt.scatter(rsdpos[:,1],rsdpos[:,2],s=10,color='red',label='RSDPositions',zorder=10)
+    #for i in range(len(pos[:,1])):
+    #    print(i)
+    #    plt.plot([rsdpos[i,1],rsdpos[i,1]],[pos[i,2],rsdpos[i,2]],color='skyblue',linestyle='dashed',zorder=1)
+    plt.grid()
+    plt.xlim([100,110])
+    plt.ylim([100,110])
+    plt.xlabel('y [Mpc]')
+    plt.ylabel('z [Mpc]')
+    plt.legend(loc='upper right')
+    plt.title('(y,z) coordinates of the galaxies')
+    #plt.savefig('rsd_effectPos.png')
+    plt.close()
+
+    #Play around with these masks to find a proper cluster to plot: 
+    condition_x_v2 = positions[:,0] < 10
+    condition_y_v2 = (positions[:,1] < 1000) & (positions[:,1] > 0)
+    condition_z_v2 = (positions[:,2] < 1000) & (positions[:,2] > 0)
+    pos_v2 = positions[condition_x_v2 & condition_y_v2 & condition_z_v2]
+    rsd_v2 = rsd_positions[condition_x_v2 & condition_y_v2 & condition_z_v2]
+
+    plt.scatter(pos_v2[:,1],pos_v2[:,2],s=1,color='black',label='Positions',zorder=20)
+    plt.grid()
+    #plt.xlim([100,130])
+    #plt.ylim([110,155])
+    plt.xlabel('y [Mpc]')
+    plt.ylabel('z [Mpc]')
+    plt.legend(loc='upper right')
+    plt.title('(y,z) coordinates of the galaxies')
+    plt.savefig('full_posMap.png')
+    plt.close()
+
+    plt.scatter(rsd_v2[:,1],rsd_v2[:,2],s=1,color='black',label='RSDPositions',zorder=10)
+    plt.grid()
+    #plt.xlim([100,130])
+    #plt.ylim([110,155])
+    plt.xlabel('y [Mpc]')
+    plt.ylabel('z [Mpc]')
+    plt.legend(loc='upper right')
+    plt.title('(y,z) coordinates of the galaxies')
+    plt.savefig('full_rsdMap.png')
+    plt.close()
+
 def Hubble(a,h,omega_m,omega_lambda):
     Hubble_0 = h*100
     Hubble_a = Hubble_0*np.sqrt(omega_m * a**(-3) + omega_lambda)
@@ -47,8 +101,13 @@ def genPower_1D(position,mass,velocity,Nmesh,dk,kmin,show_data):
     RSDPosition = add_RSD(cat,z,line_of_sight)
     cat['RSDPosition'] = RSDPosition
 
+    print(cat['Position'].compute())
+    print(cat['RSDPosition'].compute())
+
+    plot_positions(cat['Position'].compute(),cat['RSDPosition'].compute())
+
     #convert to a MeshSource, using TSC interpolation on Nmesh^3 
-    mesh = cat.to_mesh(window='tsc', Nmesh=Nmesh, compensated=True, position='Position', BoxSize=[1000,1000,1000])
+    mesh = cat.to_mesh(window='tsc', Nmesh=Nmesh, compensated=True, position='RSDPosition', BoxSize=[1000,1000,1000])
     
     #compute the fast-fourier transform using linear binning & obtain the power
     fft = FFTPower(mesh,mode='1d',dk=dk,kmin=kmin) 
@@ -65,11 +124,13 @@ def genPower_1D(position,mass,velocity,Nmesh,dk,kmin,show_data):
 #From this part, we read in the data and save the FFT power results!
 #####################################################################
 
+
 galaxy_filterVel = np.load('/net/draco/data2/vanveenhuyzen/rsd_project/particle_data/galaxy_filterVel.npy')
 galaxy_filterMass = np.load('/net/draco/data2/vanveenhuyzen/rsd_project/particle_data/galaxy_filterMass.npy')
 galaxy_filterPos = np.load('/net/draco/data2/vanveenhuyzen/rsd_project/particle_data/galaxy_filterPos.npy')
 
 k_1D, Pk_1D, shotnoise_1D = genPower_1D(galaxy_filterPos,galaxy_filterMass,galaxy_filterVel,512,0.01,0.001,False)
+"""
 Pk_noSN_1D = Pk_1D-shotnoise_1D
 print(np.shape(Pk_noSN_1D))
 print(k_1D)
@@ -79,3 +140,4 @@ print('Saving the 1D data...')
 np.save('1Dpower_k.npy',k_1D)
 np.save('1Dpower_pk.npy',Pk_noSN_1D)
 print('Done saving!')
+"""
