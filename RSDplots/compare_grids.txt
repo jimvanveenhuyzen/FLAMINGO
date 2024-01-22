@@ -1,1 +1,0 @@
-In this directory we compare grids by changing how we handle multiple P(k) values at 1 grid point. 
