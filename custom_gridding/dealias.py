@@ -69,6 +69,8 @@ def dealias(k,p,ngrid,L,conv,nsize,dircut,realk=realk,realp=realp,silent=silent)
         ngrid2 = int(ngrid // 2)
         kx = np.indices((ngrid2, ngrid2, ngrid2), dtype=np.int64)
 
+    print(kx)
+
     print('Past first if statement')
 
     ky = np.copy(kx)
@@ -77,6 +79,7 @@ def dealias(k,p,ngrid,L,conv,nsize,dircut,realk=realk,realp=realp,silent=silent)
     ky = (ky % (ngrid2*ngrid2))/ngrid2
     kz = kz/(ngrid2*ngrid2)
     kk = np.round(np.sqrt(kx*kx+ky*ky+kz*kz))
+    print(kk)
 
     kr = np.round(k*L/(2.*np.pi))
     nk = kr.size
@@ -84,17 +87,18 @@ def dealias(k,p,ngrid,L,conv,nsize,dircut,realk=realk,realp=realp,silent=silent)
 
     print('Defined the variables')
 
+    #This goes wrong: the condition for ok is satisfied nowhere...
     ok = np.where((ky >= kx)&(kz >= ky)&(kz > 0))[0]
     islope = np.where((kr >= ngrid/(10.**0.1))&(kr <= ngrid2*10.**0.1)) #estimate slope with 0.1dex offset 
 
     nn = np.where((kx <= 2*nsize)&(ky <= 2*nsize)&(kz <= 2*nsize)) #re-use k grid to save memory
 
-    print(kk)
-    print(ok)
-    print(nk)
-    print(kk[ok])
+    #print(kk)
+    #print(ok)
+    #print(nk)
+    #print(kk[ok])
     h, _ = np.histogram(kk[ok], bins=np.arange(nk + 2)) #The histogram only prints 0s? 
-    print(h)
+    #print(h)
 
     dalpha = 100. 
 
@@ -198,7 +202,7 @@ def dealias(k,p,ngrid,L,conv,nsize,dircut,realk=realk,realp=realp,silent=silent)
 
 
     C2 = (ave/count)/(10.**np.interp(np.log10(kreal_interpol),np.log10(realkr),np.log10(realp)))
-    print(C2)
+    #print(C2)
 
     if 'silent' not in locals():
         print('Calculated factor:' +str(C2)+' ('+str(100*C2/C2real)+'%)')
@@ -221,6 +225,8 @@ def dealias(k,p,ngrid,L,conv,nsize,dircut,realk=realk,realp=realp,silent=silent)
                     kxtmp = kx[index] + 2*kN*(kx[nn]-nsize)
                     kytmp = ky[index] + 2*kN*(ky[nn]-nsize)
                     kztmp = kz[index] + 2*kN*(kz[nn]-nsize)
+
+                    #This part should be changed: its where Marcel averages over sqrt(kxkykz) but we want to do it over kz and sqrt(kxky)
                     ktmp = np.sqrt(kxtmp**2 + kytmp**2 + kztmp**2)
                     W2 = window3Dsq(kxtmp,kytmp,kztmp,kN)
                     term = np.sum(W2*ktmp**alpha) 
@@ -248,7 +254,7 @@ def dealias(k,p,ngrid,L,conv,nsize,dircut,realk=realk,realp=realp,silent=silent)
                 if 'silent' not in locals():
                     print('Correction factor at k='+str(kr[i])+' was '+str(C2[i]))
 
-        print(C2)
+        #print(C2)
         pnew=p/C2
 
         #alphanew=(mpfitexpr('P[0]+P[1]*X',alog10(kr[islope]),alog10(pnew[islope]),1d-2,[2D,-2D],/quiet))[1]
