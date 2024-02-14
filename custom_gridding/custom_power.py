@@ -54,7 +54,22 @@ galaxy_filterPos = np.load('/net/draco/data2/vanveenhuyzen/rsd_project/particle_
 k_1D, Pk_1D, shotnoise_1D = genPower_1D(galaxy_filterPos,galaxy_filterMass,galaxy_filterVel,512,0.005,0.01,False)
 print(Pk_1D[0:5])
 
-def basis_custom(y3d):
+def basis_custom(y3d,x3d,gridsize):
+    """
+    In this function we define an alternate way of gridding the data directly to a 2-dimesional grid, 
+    consisting of sqrt(kx^2+ky^2) and kz, with the grid values being the corresponding power values P(k)
+
+    Arguments:
+        -y3d: power values in the mesh
+        -x3d: k values in the mesh
+        -gridsize: defines the number of pixels we will use to project the data onto the grid. 
+
+    Returns: 
+        -grid: the final grid 
+    """
+
+    N = gridsize 
+
     #y3d = np.random.random((128,128,65))
     #y3d = np.array(y3d,dtype='complex')
     #print(y3d)
@@ -74,39 +89,38 @@ def basis_custom(y3d):
     #Match the shape of the real case 
     x3d = [x3d_0.reshape(512,1,1),x3d_1.reshape(1,512,1),x3d_2.reshape(1,1,257)]
 
-    test = np.load('x3d.npy',allow_pickle=True)
+    test = np.load('x3d.npy',allow_pickle=True) #require allow_picke=True for some reason 
     for t in test:
         print(t.shape)
 
     #Flatten to get 1D arrays
-    kx = x3d[0].flatten()
-    ky = x3d[1].flatten()
-    kz = x3d[2].flatten()
+    kx = test[0].flatten()
+    ky = test[1].flatten()
+    kz = test[2].flatten()
+
+    print(kz)
 
     x_axis = y3d.shape[0]
     y_axis = y3d.shape[1]
     z_axis = y3d.shape[2]
 
     #Set up the grid arrays
-    gridpoints = np.linspace(0,0.99,100)
-    gridpoints_sq = gridpoints**2 
-    grid_x = np.copy(gridpoints_sq)
-    grid_y = np.copy(gridpoints)
+    gridpoints = np.linspace(0,0.99,N)
 
-    #In the following nested loop we compute the absolute values of kx^2 + ky^2 
+    #In the following nested loop we compute the absolute value of k = sqrt(kx^2 + ky^2)
     k_abs = np.zeros((512,512))
     for x in range(x_axis):
         for y in range(y_axis):
             
             k_ = kx[x]**2  + ky[y]**2
-            k_abs[x,y] = k_ 
+            k_abs[x,y] = np.sqrt(k_)
         
-    #Multiply by num of grid points for easier comparison
-    k_abs = np.floor(100*k_abs).astype(int)
+    #Multiply by num of grid points for more accurate comparison (floats versus ints)
+    k_abs = np.floor(N*k_abs).astype(int)
 
     #As a result we now have a N by N grid array with the Pk values filled in, but we need to match k_z with the grid
-    gridpoints_factor = np.floor(100*gridpoints).astype(int)
-    kz_factor = np.floor(100*kz).astype(int)
+    gridpoints_factor = np.floor(N*gridpoints).astype(int)
+    kz_factor = np.floor(N*kz).astype(int)
 
     #First, we use a single loop to obtain the indices we need to use to slice the k_z coordinate for y3d 
     z_indices = np.zeros(1,dtype=int)
@@ -123,58 +137,46 @@ def basis_custom(y3d):
         #append the index to the array
         z_indices = np.append(z_indices,mask)
 
+    #As a result, we now have an array that lists the indices of y3d that correspond to the k_z values of the grid
     z_indices = z_indices[1:]
     print(z_indices)
 
     #In this double loop, we fill the grid: first by looping over k_z, and then obtaining all values where |k|
-    #is equal to the current sqrt(kx^2+ky^2) grid point.  
-    grid_ = np.zeros((100,100))
-    grid_total = []
+    #is equal to the current sqrt(kx^2+ky^2) grid point. 
+    grid = []
     for idx in z_indices: 
         grid_i = []
-        for k_ in range(len(grid_[0])):
+        for k_ in range(N):
 
-            k_current = np.floor(100*gridpoints_sq[k_]).astype(int)
+            #k_current = np.floor(100*gridpoints_sq[k_]).astype(int)
+
+            k_current = gridpoints_factor[k_]
             mask = np.where(k_current == k_abs)
 
             Pk_values = y3d.real[mask,idx]
+
+            #Case 1: there are one or more Pk values for the grid point 
             if len(Pk_values) > 0:
-                #grid_[idx,k_] = np.mean(Pk_values)
                 grid_i.append(np.mean(Pk_values))
+            #Case 2: we have no Pk values for the grid point 
             else:
-                #grid_[idx,k_] = 0.0001
                 grid_i.append(0.0001)
+        
+        #Append the k_z row to the total grid 
+        grid.append(grid_i)
 
-    
-        grid_total.append(grid_i)
+    #The result is an N by N grid of Pk values 
+    return grid
 
-    """
-    grid = np.zeros((100,100))
-    for i in range(100):
-        for j in range(100):
-
-            k_current = np.floor(100*gridpoints_sq[j]).astype(int)
-            mask = np.where(k_current == k_abs)
-
-            Pk_values = y3d.real[mask,i]
-            if len(Pk_values) > 0:
-                grid[i,j] = np.mean(Pk_values)
-            else:
-                grid[i,j] = 0.0001
-
-    """
-
-    return grid_total
-
-grid = basis_custom(1)
+grid = basis_custom(1,1,gridsize=64)
 
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
 ax.set_ylabel(r'$k_z$')
-ax.set_title('Filled grid directly from compute_3d_power (y3d and y3d.x)')
+ax.set_title('Filled grid directly from compute_3d_power (y3d and y3d.x), N=64')
 ax.grid(visible=True)
 cax = ax.imshow(grid, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral')#,norm=matplotlib.colors.LogNorm(vmin=5e1,vmax=1.5e5))
 fig.colorbar(cax,label='3D power')
-plt.savefig('rsd.png')
+plt.savefig('rsd_11022024.png')
 
 
