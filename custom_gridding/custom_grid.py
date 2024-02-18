@@ -72,4 +72,16 @@ fig.colorbar(cax,label='3D power')
 plt.savefig('dividedRSDgrids_divided_Npix64_15022024.png')
 plt.show()
 
+rsdgrid_32pix = np.load('rsdgrid_Npix32_17022024.npy')
+shotnoise = np.load('shotnoise.npy')
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title('RSD grid minus the shotnoise, Npix=32')
+ax.grid(visible=True)
+cax = ax.imshow(fullGrid(rsdgrid_32pix-shotnoise), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',norm=matplotlib.colors.LogNorm(vmin=50,vmax=1.1e5))
+fig.colorbar(cax,label='3D power')
+plt.savefig('rsdgrid_Npix32_17022024.png')
+plt.show()
 
