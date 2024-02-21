@@ -1,0 +1,7 @@
+The order in which to use the files is: 
+
+properties.py 
+membership_files.py
+lookup_table.py
+define_galaxies.py
+analyse_galaxies.py
