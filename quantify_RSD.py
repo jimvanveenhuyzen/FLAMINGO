@@ -89,14 +89,18 @@ fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
 plt.show()
 
 f_low,f_lowStd = curve_fit(kaiser, mlow_mu_lowk.flatten(), mlow_lowk.flatten())
-print(f_low[0],u"\u00B1",f_lowStd[0,0])
+#print(f_low[0],u"\u00B1",f_lowStd[0,0])
+print(u'The fitted value f to quantify the Kaiser effect for high mass galaxies is: {:.3f} \u00B1 {:.5f}'.format(f_low[0],f_lowStd[0,0]))
 
 #Lets look at the bottom left quadrant (k 0 to 0.25)
 mveryhigh_mu_lowk = mveryhigh_mu[int(0.75*N):,:int(0.25*N)] #xdata
 mveryhigh_lowk = mveryhigh[:int(0.25*N),:int(0.25*N)] #ydata
 
 f_veryhigh,f_veryhighStd = curve_fit(kaiser, mveryhigh_mu_lowk.flatten(), mveryhigh_lowk.flatten())
-print(f_veryhigh[0],u"\u00B1",f_veryhighStd[0,0])
+print(u'The fitted value f to quantify the Kaiser effect for high mass galaxies is: {:.3f} \u00B1 {:.5f}'.format(f_veryhigh[0],f_veryhighStd[0,0]))
+#print(f_veryhigh[0],u"\u00B1",f_veryhighStd[0,0])
+
+#Done without outlier-analysis: maybe for the future? 
 
 
 
