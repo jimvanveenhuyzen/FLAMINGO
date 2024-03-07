@@ -10,7 +10,7 @@ def distance(centre_of_pot,pos):
     return (centre_of_pot[0]-pos[:,0])**2 + (centre_of_pot[1]-pos[:,1])**2 + (centre_of_pot[2]-pos[:,2])**2
 
 #First, read in all the relevant stellar data, including Position, Velocity, Mass, ParticleID, FOFGroupID and GroupNr_all
-with h5py.File('/disks/cosmodm/vanveenhuyzen/stellar_properties.h5', 'r') as data:
+with h5py.File('/disks/cosmodm/vanveenhuyzen/HYDRO_FIDUCIAL_z1/sp_z1.h5', 'r') as data:
     data.keys()
     positions = data.get('Coordinates')
     velocities = data.get('Velocities')
@@ -23,7 +23,7 @@ with h5py.File('/disks/cosmodm/vanveenhuyzen/stellar_properties.h5', 'r') as dat
 data.close()
 
 #Load in the look-up table of the GroupNr indices, note that we must start from index 1 (for group 0), since the first index represents GroupNr -1 
-GroupNr_lookuptable = np.load('GroupNr_table.npy') 
+GroupNr_lookuptable = np.load('z1/GroupNr_table_z1.npy') 
 num_groups = len(GroupNr_lookuptable)
 
 #First, sort the positions, velocities and masses using the sorted GroupNr_all indices
@@ -33,7 +33,7 @@ velocities_sorted = velocities[GroupNr_sortedIDs]
 masses_sorted = masses[GroupNr_sortedIDs]
 
 #Next, from the SOAP/VR files we read in the ID, HostHaloID, CentreOfPot and finally StellarMass to check our calculation 
-SOAP_file = '/net/hypernova/data2/FLAMINGO/L1000N1800/HYDRO_FIDUCIAL/SOAP/halo_properties_0077.hdf5'
+SOAP_file = '/net/hypernova/data2/FLAMINGO/L1000N1800/HYDRO_FIDUCIAL/SOAP/halo_properties_0057.hdf5'
 with h5py.File(SOAP_file,'r') as soap:
     HostHaloID = soap['VR/HostHaloID'][...]
     HaloID = soap['VR/ID'][...]
@@ -41,42 +41,6 @@ with h5py.File(SOAP_file,'r') as soap:
     StellarMass = soap['InclusiveSphere/50kpc/StellarMass'][...]
 
 num_halos = len(StellarMass)
-
-"""
-START
-Do this code (until SubhaloID) somewhere else since we dont filter for mass anyway 
-"""
-#Create a mask to filter out halos without stars
-filter_noStars = np.where(StellarMass != 0)
-StellarMass_filtered = StellarMass[filter_noStars]
-print('ratio between Stellar mass filter & stellar mass:',len(StellarMass_filtered)/len(StellarMass))
-
-#Next, create a historgram to plot the stellar 
-SM_hist,SM_bins = np.histogram(StellarMass_filtered,bins=np.logspace(8,13,100))
-
-
-smf_max = np.argmax(SM_hist)
-SM_max = SM_bins[smf_max]
-print('The mass at which the halo density is maximal is {:.2e} M_sun'.format(SM_max))
-print('The cut-off mass, under which the resolution is too poor: {:.2e} M_sun'.format(1.5*SM_max))
-
-cutoff_mask = np.where(StellarMass > 1.5*SM_max)
-halos_aboveCutoff = StellarMass[cutoff_mask]
-print('Ratio between halos above 1.5 times cutoff mass and total halos:',len(halos_aboveCutoff)/len(StellarMass))
-
-fig,ax = plt.subplots()
-ax.plot(SM_bins[:-1],SM_hist/len(StellarMass_filtered))
-ax.vlines(1.5*SM_max,0,1,color='black',linestyle='dashed')
-ax.set_xscale('log')
-ax.set_yscale('log')
-ax.set_ylabel('dn/dlog10(M*) [Mpc^-3]')
-ax.set_xlabel('Stellar mass log10(M*) [Msun]')
-ax.set_title('Galaxy stellar mass function (SMF)')
-fig.savefig('halo_SMF.png')
-plt.close()
-"""
-END
-"""
 
 #Use this condition to check whether we have to use ID (for field halos) or the HostHaloID (for non-field halos)
 #Note that we define field halos as sub-halos as well! They are defined as subhalos of themselves
@@ -94,7 +58,7 @@ print('Starting the timer of the main loop...')
 begin = timeit.default_timer()
 
 #Use GroupNr_all+1 because of how GroupNr is defined: 0 is an index, so represents group 1 
-#GroupNr_all += 1
+GroupNr_all += 10
 def SH_properties(halo):
     #First, obtain the group that the subhalo is in 
     halo_group = SubHaloID[halo] 
@@ -133,6 +97,10 @@ def SH_properties(halo):
     print('The total mass of the galaxy is {:.2e} M_sun.'.format(galaxy_mass))
     #print('The inclusive-sphere stellar mass according to the data is {:.2e} M_sun.'.format(halo_stellar_mass))
 
+    print('Compare calculated mass to mass according to data:')
+    print('{:.3e}'.format(galaxy_mass))
+    print('{:.3e}'.format(halo_stellar_mass))
+
     #Compute the mean stellar velocity and the velocity dispersion 
     if len(velocities_in_halo) == 0:
         print('No stellar particles in the halo')
@@ -147,6 +115,7 @@ SH_meanVel = np.zeros((num_halos-1,3))
 SH_velDisp = np.zeros((num_halos-1,3))
 SH_stellarMass = np.zeros((num_halos-1))
 for i in range(num_groups-1):
+#for i in range(10000):
     mean_vel,vel_disp,gal_mass = SH_properties(i)
     print('The quantities are:\n')
     print(mean_vel,vel_disp,gal_mass)
@@ -156,7 +125,7 @@ for i in range(num_groups-1):
 end = timeit.default_timer()-begin
 print('end timer:',end)
 
-print('CoP for subhalo 1000000',CentreOfPot[1000000])
+#print('CoP for subhalo 1000000',CentreOfPot[1000000])
 #article_mass = 1e10 #mass per stellar particle 
 #print(SH_meanVel)
 #print(SH_velDisp)
@@ -166,12 +135,12 @@ print('CoP for subhalo 1000000',CentreOfPot[1000000])
 #np.savetxt('galaxy_meanVel.txt',SH_meanVel)
 #np.savetxt('galaxy_velDisp.txt',SH_velDisp)
 #np.savetxt('galaxy_stellarMass.txt',SH_stellarMass)
-np.save('galaxy_meanVel.npy',SH_meanVel)
-np.save('galaxy_velDisp.npy',SH_velDisp)
-np.save('galaxy_stellarMass.npy',SH_stellarMass)
+np.save('z1/Vel_z1.npy',SH_meanVel)
+np.save('z1/Disp_z1.npy',SH_velDisp)
+np.save('z1/Mass_z1.npy',SH_stellarMass)
 
-t = np.load('galaxy_stellarMass.npy')
-print(t[0:100])
+#t = np.load('WEAK_AGN/Mass_WEAK_AGN.npy')
+#print(t[-100:])
 
 
 

@@ -6,7 +6,7 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE" #prevents an uncommon error while 
 
 begin = timeit.default_timer()
 
-with h5py.File('/disks/cosmodm/vanveenhuyzen/stellar_properties.h5', 'r') as data:
+with h5py.File('/disks/cosmodm/vanveenhuyzen/HYDRO_FIDUCIAL_z1/sp_z1.h5', 'r') as data:
     data.keys()
     GroupNr_all = data.get('GroupNr_all')
     GroupNr_all = np.array(GroupNr_all,dtype=np.int64)
@@ -42,4 +42,4 @@ for i in range(len(GroupNr_all_sorted)):
 lookup = np.array(lookup,dtype=np.int64)
 print('The size of the lookup table is:',lookup.shape)
 #Save as a binary file to save space 
-np.save('GroupNr_table.npy',lookup)
+np.save('z1/GroupNr_table_z1.npy',lookup)
