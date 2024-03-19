@@ -36,7 +36,18 @@ z1_pos,z1_rsd,z1_div = load_files('z1')
 z2_pos,z2_rsd,z2_div = load_files('z2')
 
 weak_pos,weak_rsd,weak_div = load_files('WEAK_AGN')
+strong_pos,strong_rsd,strong_div = load_files('STRONG_AGN')
+stronger_pos,stronger_rsd,stronger_div = load_files('STRONGER_AGN')
 strongest_pos,strongest_rsd,strongest_div = load_files('STRONGEST_AGN')
+
+mmidLog_pos,mmidLog_rsd,mmidLog_div = load_files('mmidLog')
+mlowestLog_pos,mlowestLog_rsd,mlowestLog_div = load_files('mlowestLog')
+mhighLog_pos,mhighLog_rsd,mhighLog_div = load_files('mhighLog')
+
+#Try to subtract Shotnoise, doesnt seem to matter at all...
+strongest_pos_ = strongest_pos+598.987
+strongest_rsd_ = strongest_rsd+598.987
+strongest_div_ = strongest_rsd_/strongest_pos_
 
 mall_pos,mall_rsd,mall_div = load_files('mall')
 mall16_pos,mall16_rsd,mall16_div = load_files('mall_N16')
@@ -48,22 +59,77 @@ print(strongest_rsd)
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
 ax.set_ylabel(r'$k_z$')
-ax.set_title(r'$P_{RSD}$ for all galaxies with STRONGEST_AGN, no SN, Npix=64')
+ax.set_title(r'$P_{RSD}/P_{real}$ for second highest Log mass bin, no SN, Npix=64')
 ax.grid(visible=True)
-cax = ax.imshow(fullGrid(strongest_rsd), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',norm=matplotlib.colors.LogNorm(vmin=50,vmax=1.1e5))
+cax = ax.imshow(fullGrid(mhighLog_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
 fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
-plt.savefig('strongest_rsd.png')
+plt.savefig('mhighLog.png')
 #plt.show()
 plt.close()
 
 fig, ax = plt.subplots(figsize=(8, 6))
 ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
 ax.set_ylabel(r'$k_z$')
-ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies with STRONGEST_AGN, no SN, Npix=64')
+ax.set_title(r'$P_{RSD}/P_{real}$ for middle Log mass bin, no SN, Npix=64')
+ax.grid(visible=True)
+cax = ax.imshow(fullGrid(mmidLog_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
+fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+plt.savefig('mmidLog.png')
+#plt.show()
+plt.close()
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title(r'$P_{RSD}/P_{real}$ for lowest Log mass bin, no SN, Npix=64')
+ax.grid(visible=True)
+cax = ax.imshow(fullGrid(mlowestLog_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
+fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+plt.savefig('mlowestLog.png')
+#plt.show()
+plt.close()
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title(r'$P_{RSD}$ for all galaxies with STRONGEST_AGN, no SN, Npix=64')
+ax.grid(visible=True)
+cax = ax.imshow(fullGrid(strongest_rsd), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',norm=matplotlib.colors.LogNorm(vmin=50,vmax=1.1e5))
+fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+#plt.savefig('strongest_rsd_v2.png')
+#plt.show()
+plt.close()
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies with STRONGEST_AGN, with SN, Npix=64')
 ax.grid(visible=True)
 cax = ax.imshow(fullGrid(strongest_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
 fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
-plt.savefig('strongest.png')
+#plt.savefig('strongest_v2.png')
+#plt.show()
+plt.close()
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies with STRONGER_AGN, no SN, Npix=64')
+ax.grid(visible=True)
+cax = ax.imshow(fullGrid(stronger_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
+fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+#plt.savefig('stronger.png')
+#plt.show()
+plt.close()
+
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies with STRONG_AGN, no SN, Npix=64')
+ax.grid(visible=True)
+cax = ax.imshow(fullGrid(strong_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
+fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+#plt.savefig('strong.png')
 #plt.show()
 plt.close()
 
@@ -74,7 +140,7 @@ ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies with WEAK_AGN, no SN, Npix=64
 ax.grid(visible=True)
 cax = ax.imshow(fullGrid(weak_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
 fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
-plt.savefig('weak.png')
+#plt.savefig('weak.png')
 #plt.show()
 plt.close()
 
@@ -85,7 +151,7 @@ ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies at z=0.5, no SN, Npix=64')
 ax.grid(visible=True)
 cax = ax.imshow(fullGrid(z0_5_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
 fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
-plt.savefig('z0_5.png')
+#plt.savefig('z0_5.png')
 #plt.show()
 plt.close()
 
@@ -96,7 +162,7 @@ ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies at z=0.8, no SN, Npix=64')
 ax.grid(visible=True)
 cax = ax.imshow(fullGrid(z0_8_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
 fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
-plt.savefig('z0_8.png')
+#plt.savefig('z0_8.png')
 #plt.show()
 plt.close()
 
@@ -107,7 +173,7 @@ ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies at z=1.0, no SN, Npix=64')
 ax.grid(visible=True)
 cax = ax.imshow(fullGrid(z1_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
 fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
-plt.savefig('z1.png')
+#plt.savefig('z1.png')
 #plt.show()
 plt.close()
 
@@ -118,7 +184,7 @@ ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies at z=2.0, no SN, Npix=64')
 ax.grid(visible=True)
 cax = ax.imshow(fullGrid(z2_div), origin='lower',extent=(-1,1,-1,1),cmap='nipy_spectral',vmin=0,vmax=5)
 fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
-plt.savefig('z2.png')
+#plt.savefig('z2.png')
 #plt.show()
 plt.close()
 
@@ -420,7 +486,7 @@ def fit_fog(grid,kaiser_maxk,fog_mink,smoothing_factor):
     kaiser_term = kaiser(mu_val,f)
 
     #Now finally get the ratio P_RSD/P_real divided by the kaiser term, which is (1 + fmu**2)**2
-    rsd_over_real = grid_smoothed[:,int(fog_mink * Ndown):] / kaiser_term
+    rsd_over_real = grid_smoothed[:,int(fog_mink * Ndown):] #/ kaiser_term
 
     return rsd_over_real,f
 
@@ -450,6 +516,10 @@ cf_2 = int(Nbig//Nsmaller)
 mall_div_resh_ = np.copy(mall_div)
 mall_div_resh_ = mall_div.reshape(Nsmaller,cf_2,Nsmaller,cf_2)
 mall_div_compress_ = np.mean(mall_div_resh_, axis=(1,3))
+
+#alternative mall_div_compress_ by using the N=16 pre-defined data 
+mall_div_compress_ = mall16_div
+
 print(np.shape(mall_div_compress_))
 f_all_,_,_ = compute_growthfactor(mall_div_compress_,0.25,'all (compressed)')
 mu_2 = mu_grid(mall_div_compress_)
@@ -460,6 +530,8 @@ highk_ = mall_div_compress_[:,int(0.85*Nsmaller):]  * kaiser_all_
 
 #True factor? 
 highk_alt = mall_div_compress_[:,int(0.85*Nsmaller):]  / kaiser_all_
+print('The values for kaiser_all are:\n')
+print(kaiser_all_)
 highk_alt_mean = np.mean(highk_alt,axis=1)
 
 k_range_ = np.linspace(0,kmax-0.01,Nsmaller)
@@ -486,12 +558,12 @@ plt.close()
 
 for i in range(pk_lists):
     plt.plot(k_range_,highk_alt[:,i],label='k_ = {:.2f}'.format(k_val_[i]),linestyle='dashed',alpha=0.5)
-plt.plot(k_range_,highk_alt_mean,label='mean k_',color='black',linewidth=3)
+plt.plot(k_range_,highk_alt_mean[::-1],label='mean k_',color='black',linewidth=3)
 plt.xlabel(r'$k_z$')
 plt.ylabel(r'$P_{RSD}(k)/P_{REAL}(k)$')
 plt.title(r'Divided power values as a function of k_z at high k_transversal (Alternate)')
 plt.legend()
-plt.savefig('fog_N16_alt.png')
+plt.savefig('fog_N16_18032024.png')
 #plt.show()
 plt.close()
 
@@ -631,6 +703,8 @@ plt.title(r'Divided power values as a function of k_z at high k_transversal')
 plt.legend()
 #plt.show()
 plt.close()
+
+
 
 
 #The code below tries to fit a straight line but this is outdated for now 
