@@ -4,6 +4,7 @@ import matplotlib.colors
 from scipy.optimize import curve_fit
 from scipy.optimize import least_squares
 from scipy.optimize import minimize
+from scipy.stats import chisquare
 
 def fullGrid(grid):
     mirrorX = np.flip(grid,axis=0)
@@ -36,7 +37,7 @@ mall_numvalTrue = np.ones_like(mall_numval) * mall_numval[-1,:]
 
 plt.imshow(mall_numvalTrue)
 plt.colorbar()
-#plt.show()
+plt.show()
 plt.close()
 
 
@@ -58,7 +59,7 @@ def compute_ktotal(k_trans,k_z):
     return k_total
 
 kmax = 1 
-print(mall16_div.shape)
+#print(mall16_div.shape)
 
 def mu_grid(grid):
     
@@ -115,13 +116,13 @@ def compute_growthfactor(divided_grid,kmax_kaiser,description):
 f,ferr,mu16,ktotal16 = compute_growthfactor(mall16_div,0.25,'test')
 
 mall16_div_lowk = mall16_div[:4,:4]
-print(mall16_div_lowk.shape)
+#print(mall16_div_lowk.shape)
 
 mall16_div_highk = mall16_div[:,int(0.85*16):]
-print(mall16_div_highk)
+#print(mall16_div_highk)
 
 mall_highk = np.mean(mall16_div_highk,axis=1)
-print(mall_highk)
+#print(mall_highk)
 
 k_values = np.linspace(0,1,16)
 for i in range(mall16_div_highk.shape[1]):
@@ -165,10 +166,10 @@ mu16_lowk = np.mean(mu16[:,0:int(0.25*16)],axis=1)
 mu16_midk = np.mean(mu16[:,int(0.25*16):int(0.5*16)],axis=1)
 mu16_midhighk = np.mean(mu16[:,int(0.5*16):int(0.85*16)],axis=1)
 mu16_highk = np.mean(mu16[:,int(0.85*16):],axis=1)
-print(mu16[:,0:int(0.25*16)])
-print(mu16_lowk)
+#print(mu16[:,0:int(0.25*16)])
+#print(mu16_lowk)
 
-print(mu16.shape)
+#print(mu16.shape)
 
 kaiser_lowk = (1 + f*mu16_lowk**2)**2
 kaiser_midk = (1 + f*mu16_midk**2)**2
@@ -286,18 +287,27 @@ print('gaussian params and covariance:',par,np.diag(cov))
 fit_result = func(func_var,*par).reshape(64,64)
 
 fig, ax = plt.subplots(figsize=(8, 6))
-cax = ax.imshow(mall_div, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0,vmax=5)
+cax = ax.imshow(mall_div, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0.5,vmax=1.5)
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies')
+ax.grid(visible=True)
 fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
-fig.savefig('fitting/nofit.png')
+fig.savefig('fitting/nofit_BFGS.png')
 #plt.show()
 plt.close()
 
 fig, ax = plt.subplots(figsize=(8, 6))
 cax = ax.imshow(fit_result, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0,vmax=5)
 fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
-fig.savefig('fitting/fit.png')
+#fig.savefig('fitting/fit.png')
 #plt.show()
 plt.close()
+
+print('N=64',mall_numvalTrue[-1,:])
+weights = np.sqrt(mall_numvalTrue)
+
+print('N=64 weights',weights[-1,:])
 
 def func_minimize(x,mu,kz,power):
     f = x[0]
@@ -308,6 +318,7 @@ def func_minimize(x,mu,kz,power):
     model = ((1+f*(mu**2))**2) * (1/np.sqrt(2*np.pi*sigma**2) * np.exp(-(kz-kz0)**2/(2*sigma**2)) + a)
     #Now, compute the sum-squared error between the model and divided power 
     diff_squared = (model-power)**2 
+    return np.sqrt(np.mean(diff_squared))
     return np.sum(diff_squared)
 
 result = least_squares(func_minimize,[0.25,1,0,1],args=(mu_mall64,Y,mall_div))
@@ -320,24 +331,322 @@ result_alt = minimize(func_minimize,[0.25,1,0,1],args=(mu_mall64,Y,mall_div),met
 print('Using BFGS minimization')
 print(result_alt.x)
 
-#Now try some other functions for fitting
+print(50*'-'+'Relevant fitting starts here:'+50*'-')
 
-def func_v2(xdata,f,a,b):
-    mu,kz = xdata
-    return ((1+f*(mu**2))**2) * (a * kz**2 + b)
+def func_gaussian(x,mu,kz,power):
+    f = x[0]
+    sigma = x[1]
+    #b = x[2]
+    #sigma = x[2]
+
+    model = ((1+f*(mu**2))**2) * (np.exp(-(kz)**2/(2*sigma**2)))
+    #Now, compute the sum-squared error between the model and divided power 
+    diff_squared = (model-power)**2 
+    #As an extra step, apply the weights computed beforehand: 
+    diff_sqr_weighted = weights**2 * (model-power)**2 * (1/np.sum(weights))
+
+    #Finally, compute the Root-Mean-Square Error (RMSE), which is what we will try to minimize! 
+    return np.sqrt(np.mean(diff_sqr_weighted))
+
+def func_lorentzian(x,mu,kz,power):
+    f = x[0]
+    gamma = x[1]
+
+    model = ((1+f*(mu**2))**2) * (gamma/((gamma)**2 + (kz)**2))
+    #As an extra step, apply the weights computed beforehand: 
+    diff_sqr_weighted = weights * (model-power)**2 * (1/np.sum(weights))
+
+    #Finally, compute the Root-Mean-Square Error (RMSE), which is what we will try to minimize! 
+    return np.sqrt(np.mean(diff_sqr_weighted))
+
+def func_lorentzian_basic(x,mu,kz,power):
+    f = x[0]
+    t = kz * f * 1 
+
+    model = ((1+f*(mu**2))**2) * 1/(1 + t**2)
+
+    diff_sqr_weighted = weights * (model-power)**2 * (1/np.sum(weights))
+
+    #Finally, compute the Root-Mean-Square Error (RMSE), which is what we will try to minimize! 
+    return np.sqrt(np.mean(diff_sqr_weighted))
+
+def func_lorentzian_basic2(x,mu,kz,power):
+    f = x[0]
+    sigma = x[1]
+    t = kz * f * sigma
+
+    model = ((1+f*(mu**2))**2) * 1/(1 + t**2)
+
+    diff_sqr_weighted = weights * (model-power)**2 * (1/np.sum(weights))
+
+    #Finally, compute the Root-Mean-Square Error (RMSE), which is what we will try to minimize! 
+    return np.sqrt(np.mean(diff_sqr_weighted))
+
+def func_gaussian_basic(x,mu,kz,power):
+    f = x[0]
+    t = kz * f
+
+    model = ((1+f*(mu**2))**2) * np.exp(-t**2)
+
+    diff_sqr_weighted = weights * (model-power)**2 * (1/np.sum(weights))
+
+    #Finally, compute the Root-Mean-Square Error (RMSE), which is what we will try to minimize! 
+    return np.sqrt(np.mean(diff_sqr_weighted))
 
 
-par,cov = curve_fit(func_v2,func_var,func_values,sigma=func_sigma,p0=[0.25,-0.5,0.5],bounds=([0.2,-1,0.5],[0.3,0.5,1.5]))
+def func_gaussian_basic2(x,mu,kz,power):
+    f = x[0]
+    sigma = x[1]
+    t = kz * f * sigma
 
-print(par,np.diag(cov))
+    model = ((1+f*(mu**2))**2) * np.exp(-t**2)
 
-def func_v2(xdata,f,a,b):
-    mu,kz = xdata
+    diff_sqr_weighted = weights * (model-power)**2 * (1/np.sum(weights))
 
-    return ((1+f*(mu**2))**2) * (a * kz + b)
+    #Finally, compute the Root-Mean-Square Error (RMSE), which is what we will try to minimize! 
+    return np.sqrt(np.mean(diff_sqr_weighted))
 
-par,cov = curve_fit(func_v2,func_var,func_values,sigma=func_sigma,p0=[0.25,-0.5,0.5])
+#Use L-BFGS-B such that we can use bounds
+result_gaussian = minimize(func_gaussian,[0.5,1],args=(mu_mall64,Y,mall_div),method='L-BFGS-B',bounds=((0,1),(-10,10)))
 
-print(par,np.diag(cov))
+print('Using L-BFGS-B minimization and a Gaussian profile')
+print(result_gaussian.x)
 
+result_lorentzian = minimize(func_lorentzian,[0.5,1],args=(mu_mall64,Y,mall_div),method='L-BFGS-B',bounds=((0,1),(0,10)))
 
+print('Using L-BFGS-B minimization and a Lorentzian profile')
+print(result_lorentzian.x)
+
+result_lorentzian_basic = minimize(func_lorentzian_basic,0.5,args=(mu_mall64,Y,mall_div),method='L-BFGS-B',bounds=[(0,1)])
+
+print('Using L-BFGS-B minimization and a 1/(1+x**2) Lorentzian profile')
+print(result_lorentzian_basic.x)
+
+result_lorentzian_basic2 = minimize(func_lorentzian_basic2,[0.5,1],args=(mu_mall64,Y,mall_div),method='L-BFGS-B',bounds=[(0,1),(0,10)])
+
+print('Using L-BFGS-B minimization and a 1/(1+x**2) Lorentzian profile and sigma_v as free parameter')
+print(result_lorentzian_basic2.x)
+
+result_gaussian_basic = minimize(func_gaussian_basic,0.5,args=(mu_mall64,Y,mall_div),method='L-BFGS-B',bounds=[(0,1)])
+
+print('Using L-BFGS-B minimization and a np.exp(-x**2) Gaussian profile')
+print(result_gaussian_basic.x)
+
+result_gaussian_basic2 = minimize(func_gaussian_basic2,[0.5,1],args=(mu_mall64,Y,mall_div),method='L-BFGS-B',bounds=[(0,1),(0,10)])
+
+print('Using L-BFGS-B minimization and a np.exp(-x**2) Gaussian profile and sigma_v as free parameter')
+print(result_gaussian_basic2.x)
+
+#result_NM = minimize(func_minimize2,[0.25,1],args=(mu_mall64,Y,mall_div),method='Nelder-Mead')
+
+#print('Using Nelder-Mead minimization')
+#print(result_NM.x)
+
+def model(x,mu,kz):
+    f = x[0]
+    #f = 0.25
+    #a = x[1]
+    sigma = x[1]
+    #sigma = x[2]
+    #b = x[2]
+    model = ((1+f*(mu**2))**2) * (np.exp(-(kz)**2/(2*sigma**2)))
+    return model
+
+def model_lorenztian(x,mu,kz):
+    f = x[0]
+    gamma = x[1]
+    model = ((1+f*(mu**2))**2) * (gamma**2/((gamma)**2 + (kz)**2))
+    return model
+
+def model_lorentzian_basic(x,mu,kz):
+    f = x[0]
+    t = kz * f * 1 
+
+    model = ((1+f*(mu**2))**2) * 1/(1 + t**2)
+    return model
+
+#Print statements to check whether the shapes of Y (kz) and mu are correctly oriented! 
+print(mu_mall64)
+print(Y)
+
+mall_div_model = model(result_gaussian.x,mu_mall64,Y)
+mall_div_lorentzian = model_lorenztian(result_lorentzian.x,mu_mall64,Y)
+mall_div_lorentzian_basic = model_lorentzian_basic(result_lorentzian_basic.x,mu_mall64,Y)
+
+print(40*'-'+'Chi-square test')
+chi2_gaussian = chisquare(f_obs=mall_div.flatten(),f_exp=mall_div_model.flatten())
+chi2_lorentzian = chisquare(f_obs=mall_div.flatten(),f_exp=mall_div_lorentzian.flatten())
+
+#Compute the degrees of freedom: N*N - 2 
+dof = (len(mall_div)-2)**2
+print(chi2_gaussian.statistic/dof)
+print(chi2_lorentzian.statistic/dof)
+
+test = chisquare(mall_div.flatten(),mall_div.flatten())
+print(test.statistic)
+
+fig, ax = plt.subplots(figsize=(8, 6))
+cax = ax.imshow(mall_div_model, extent=(0,1,0,1),cmap='nipy_spectral',vmin=0.5,vmax=1.5)
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title(r'$P_{RSD}/P_{real}$ all galaxies using the model')
+ax.grid(visible=True)
+fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+fig.savefig('fitting/fit_BFGS.png')
+#plt.show()
+plt.close()
+
+fig, ax = plt.subplots(figsize=(8, 6))
+cax = ax.imshow(mall_div_lorentzian, extent=(0,1,0,1),cmap='nipy_spectral',vmin=0.5,vmax=1.5)
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title(r'$P_{RSD}/P_{real}$ all galaxies using the Lorentzian model')
+ax.grid(visible=True)
+fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+fig.savefig('fitting/fit_Lorentzian.png')
+#plt.show()
+plt.close()
+
+fig, ax = plt.subplots(figsize=(8, 6))
+cax = ax.imshow(fullGrid(mall_div), extent=(0,1,0,1),cmap='nipy_spectral',vmin=0,vmax=1.5)
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies (full)')
+ax.grid(visible=True)
+fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+fig.savefig('fitting/nofit_BFGS_full.png')
+#plt.show()
+plt.close()
+
+fig, ax = plt.subplots(figsize=(8, 6))
+cax = ax.imshow(fullGrid(mall_div_model), extent=(0,1,0,1),cmap='nipy_spectral',vmin=0,vmax=1.5)
+ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax.set_ylabel(r'$k_z$')
+ax.set_title(r'$P_{RSD}/P_{real}$ for all galaxies using the model (full)')
+ax.grid(visible=True)
+fig.colorbar(cax,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+fig.savefig('fitting/fit_BFGS_full.png')
+#plt.show()
+plt.close()
+
+#Try to relate sigma to the velocity dispersions of galaxies
+mall_disp = np.load('/net/draco/data2/vanveenhuyzen/rsd_project/particle_data/galaxy_filterDisp.npy')
+mall_disp_z = mall_disp[:,2]
+print(np.mean(mall_disp_z))
+
+def residual(ydata,model):
+    diff_sq = (ydata-model)**2
+    diff_sq_weighted = weights**2 * diff_sq / np.sum(weights)
+    return diff_sq,diff_sq_weighted
+
+res,res_weighted = residual(mall_div,mall_div_lorentzian)
+
+fig, ax = plt.subplots(2,2,figsize=(10,10))
+cax1 = ax[0,0].imshow(mall_div, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0.5,vmax=1.5)
+#ax[0,0].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[0,0].set_ylabel(r'$k_z$')
+ax[0,0].set_title(r'$P_{RSD}/P_{real}$ for all galaxies')
+ax[0,0].grid(visible=True)
+fig.colorbar(cax1,ax=ax[0,0],label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+
+cax2 = ax[0,1].imshow(mall_div_lorentzian,extent=(0,1,0,1),cmap='nipy_spectral',vmin=0.5,vmax=1.5)
+#ax[0,1].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[0,1].set_ylabel(r'$k_z$')
+ax[0,1].set_title(r'$P_{RSD}/P_{real}$ all galaxies using the model')
+ax[0,1].grid(visible=True)
+fig.colorbar(cax2,ax=ax[0,1],label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+
+cax3 = ax[1,0].imshow(res, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0,vmax=2)
+ax[1,0].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[1,0].set_ylabel(r'$k_z$')
+ax[1,0].set_title(r'Residuals')
+ax[1,0].grid(visible=True)
+fig.colorbar(cax3,ax=ax[1,0],label=r'(data-model)^2')
+
+cax4 = ax[1,1].imshow(res_weighted, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0,vmax=0.005)
+ax[1,1].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[1,1].set_ylabel(r'$k_z$')
+ax[1,1].set_title(r'Weighted residuals')
+ax[1,1].grid(visible=True)
+fig.colorbar(cax4,ax=ax[1,1],label=r'w^2 * (data-model)^2 / sum(w)')
+
+fig.suptitle('Comparison of true and modelled RSD/Real grid (Lorentzian)')
+fig.savefig('fitting/lorentzian.png')
+plt.show()
+plt.close()
+
+#Now try it for the Gaussian
+
+res_gaussian,res_weighted_gaussian = residual(mall_div,mall_div_model)
+
+fig, ax = plt.subplots(2,2,figsize=(10,10))
+cax1 = ax[0,0].imshow(mall_div, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0.5,vmax=1.5)
+#ax[0,0].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[0,0].set_ylabel(r'$k_z$')
+ax[0,0].set_title(r'$P_{RSD}/P_{real}$ for all galaxies')
+ax[0,0].grid(visible=True)
+fig.colorbar(cax1,ax=ax[0,0],label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+
+cax2 = ax[0,1].imshow(mall_div_model,extent=(0,1,0,1),cmap='nipy_spectral',vmin=0.5,vmax=1.5)
+#ax[0,1].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[0,1].set_ylabel(r'$k_z$')
+ax[0,1].set_title(r'$P_{RSD}/P_{real}$ all galaxies using the model')
+ax[0,1].grid(visible=True)
+fig.colorbar(cax2,ax=ax[0,1],label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+
+cax3 = ax[1,0].imshow(res_gaussian, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0,vmax=2)
+ax[1,0].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[1,0].set_ylabel(r'$k_z$')
+ax[1,0].set_title(r'Residuals')
+ax[1,0].grid(visible=True)
+fig.colorbar(cax3,ax=ax[1,0],label=r'(data-model)^2')
+
+cax4 = ax[1,1].imshow(res_weighted_gaussian, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0,vmax=0.005)
+ax[1,1].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[1,1].set_ylabel(r'$k_z$')
+ax[1,1].set_title(r'Weighted residuals')
+ax[1,1].grid(visible=True)
+fig.colorbar(cax4,ax=ax[1,1],label=r'w^2 * (data-model)^2 / sum(w)')
+
+fig.suptitle('Comparison of true and modelled RSD/Real grid (Gaussian)')
+fig.savefig('fitting/gaussian.png')
+
+#plt.tight_layout()
+plt.show()
+plt.close()
+
+fig, ax = plt.subplots(2,2,figsize=(10,10))
+cax1 = ax[0,0].imshow(mall_div, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0.5,vmax=1.5)
+#ax[0,0].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[0,0].set_ylabel(r'$k_z$')
+ax[0,0].set_title(r'$P_{RSD}/P_{real}$ for all galaxies')
+ax[0,0].grid(visible=True)
+fig.colorbar(cax1,ax=ax[0,0],label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+
+cax2 = ax[0,1].imshow(mall_div_lorentzian_basic,extent=(0,1,0,1),cmap='nipy_spectral',vmin=0.5,vmax=1.5)
+#ax[0,1].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[0,1].set_ylabel(r'$k_z$')
+ax[0,1].set_title(r'$P_{RSD}/P_{real}$ all galaxies using the model')
+ax[0,1].grid(visible=True)
+fig.colorbar(cax2,ax=ax[0,1],label=r'$P_{RSD}(k)/P_{Pos}(k)$')
+
+cax3 = ax[1,0].imshow(res_gaussian, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0,vmax=2)
+ax[1,0].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[1,0].set_ylabel(r'$k_z$')
+ax[1,0].set_title(r'Residuals')
+ax[1,0].grid(visible=True)
+fig.colorbar(cax3,ax=ax[1,0],label=r'(data-model)^2')
+
+cax4 = ax[1,1].imshow(res_weighted_gaussian, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0,vmax=0.005)
+ax[1,1].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[1,1].set_ylabel(r'$k_z$')
+ax[1,1].set_title(r'Weighted residuals')
+ax[1,1].grid(visible=True)
+fig.colorbar(cax4,ax=ax[1,1],label=r'w^2 * (data-model)^2 / sum(w)')
+
+fig.suptitle('Comparison of true and modelled RSD/Real grid (Gaussian)')
+fig.savefig('fitting/lorentzian_basic.png')
+
+#plt.tight_layout()
+plt.show()
+plt.close()
