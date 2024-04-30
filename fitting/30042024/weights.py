@@ -62,5 +62,29 @@ plt.show()
 
 np.save('fitting/weights_2804.npy',weights)
 
-print(mall_pos[-1,:])
+#Grab the (k,Pk) coordinates along mu=0 since these this data should have the lowest amount of noise
+
+print(mall_pos[0,:])
+pk_values = mall_pos[0,:]
+k_values = np.linspace(0,1,64)
+
+def interpGrid(grid):
+
+    pk = grid[0,:]
+    k = np.linspace(0,1,64)
+
+    x_,y_ = np.meshgrid(k,k)
+    k_val = np.zeros_like(x_)
+
+    for i in range(64):
+        for j in range(64):
+            #Compute magnitude
+            kmag = np.sqrt(x_[i,j]**2 + y_[i,j]**2)
+
+            #Compare this k magnitude with k-values from (k,Pk)
+            #Fill in the corresponding Pk value to the closest k value 
+
+    #We should have a full grid based on one data value 
+
+
 
