@@ -18,11 +18,13 @@ The python files should be read as follows:
   - Added mall_grids.png to showcase result
 - weights.py : The noise properties of the grids are hard to quantify, so we use this code to smooth the variances from which we can derive weights inversely proportional to the noise
   - Added weights_rsd.png and weights_div.png to showcase results
-- model.py : Create a model of the divided grids 
+- model.py : Create a model of the divided grids
+  - Added model_lorentz_weightsdiv.png to showcase the model 
 
 ### Credits
 
 - Leiden University: https://www.universiteitleiden.nl/
+- Supervisor: Dr. Marcel van Daalen, https://home.strw.leidenuniv.nl/~daalen/
 - FLAMINGO simulations: https://flamingo.strw.leidenuniv.nl/
 - nbodykit: https://nbodykit.readthedocs.io/en/latest/
 
