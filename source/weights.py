@@ -28,14 +28,30 @@ def load_files(file):
 #Load in the data: 
 mall_pos,mall_rsd,mall_div = load_files('mall')
 
-fig, ax = plt.subplots(figsize=(10,10))
-cax1 = ax.imshow(mall_pos, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',norm=matplotlib.colors.LogNorm(vmin=50,vmax=1.1e5))
-ax.set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
-ax.set_ylabel(r'$k_z$')
-ax.set_title(r'$P_{real}$ for all galaxies')
-ax.grid(visible=True)
-fig.colorbar(cax1,label=r'$P_{RSD}(k)/P_{Pos}(k)$')
-plt.savefig('mall_real.png')
+fig, ax = plt.subplots(1,3,figsize=(20,10))
+cax1 = ax[0].imshow(mall_pos, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',norm=matplotlib.colors.LogNorm(vmin=50,vmax=1.1e5))
+ax[0].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[0].set_ylabel(r'$k_z$')
+ax[0].set_title(r'$P_{real}$ for all galaxies')
+ax[0].grid(visible=True)
+fig.colorbar(cax1,ax=ax[0],label=r'$P_{Real}(k)$')
+
+cax2 = ax[1].imshow(mall_rsd,origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',norm=matplotlib.colors.LogNorm(vmin=50,vmax=1.1e5))
+ax[1].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[1].set_ylabel(r'$k_z$')
+ax[1].set_title(r'$P_{RSD}$ for all galaxies')
+ax[1].grid(visible=True)
+fig.colorbar(cax2,ax=ax[1],label=r'$P_{RSD}(k)$')
+
+cax3 = ax[2].imshow(mall_div, origin='lower',extent=(0,1,0,1),cmap='nipy_spectral',vmin=0.5,vmax=2.5)
+ax[2].set_xlabel(r'$k = \sqrt{k_x^2 + k_y^2}$')
+ax[2].set_ylabel(r'$k_z$')
+ax[2].set_title(r'$P_{RSD}/P_{real}$ for all galaxies')
+ax[2].grid(visible=True)
+fig.colorbar(cax3,ax=ax[2],label=r'$P_{RSD}(k)/P_{Real}(k)$')
+
+fig.suptitle('The gridded power values of the real space, redshift space, and redshift/real')
+fig.savefig('mall_grids.png')
 #plt.show()
 plt.close()
 
