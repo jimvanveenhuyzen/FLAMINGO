@@ -15,7 +15,10 @@ The python files should be read as follows:
 - lookup_table.py : Creates a look-up table to use in the define_galaxies.py routine, more specifically to significantly speed up the masking of halo groups
 - define_galaxies.py : Construct a galaxy catalogue using the particle properties, including galaxy position, velocity, velocity dispersion and stellar mass
 - FFTPower_custom.py : Use nbodykit's FFTPower to create a custom function that projects the FFT data-cube to a custom basis in two dimensions
--
+  - Added mall_grids.png to showcase result
+- weights.py : The noise properties of the grids are hard to quantify, so we use this code to smooth the variances from which we can derive weights inversely proportional to the noise
+  - Added weights_rsd.png and weights_div.png to showcase results
+- model.py : Create a model of the divided grids 
 
 ### Credits
 
